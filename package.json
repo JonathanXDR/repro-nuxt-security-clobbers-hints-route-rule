@@ -1,0 +1,18 @@
+{
+  "name": "repro-nuxt-security-clobbers-hints-route-rule",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "nuxi prepare",
+    "dev": "nuxi dev",
+    "build": "nuxi build",
+    "inspect": "nuxi prepare && node -e \"import('node:fs/promises').then(async fs => { const cfg = JSON.parse(await fs.readFile('.nuxt/nuxt.json','utf8').catch(() => '{}')); console.log('See .nuxt/nitro.json for the resolved nitro routeRules.'); })\""
+  },
+  "devDependencies": {
+    "@nuxt/hints": "1.1.2",
+    "nuxt": "4.4.6",
+    "nuxt-security": "2.6.0",
+    "typescript": "~5.9.0",
+    "vue-tsc": "~3.0.0"
+  }
+}
