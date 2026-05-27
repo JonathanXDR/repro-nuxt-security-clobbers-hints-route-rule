@@ -1,38 +1,74 @@
-# Repro: `nuxt-security@2.6.0` clobbers user `routeRules['/__nuxt_hints/**']`
+# Repro: `nuxt-security@2.6.0` overwrites user `routeRules['/__nuxt_hints/**']`
 
-Minimal Nuxt 4 project showing that `nuxt-security`'s auto-hints branch overwrites — rather than merges with — any pre-existing `routeRules['/__nuxt_hints/**']` declared by the user.
+Minimal Nuxt 4 project showing that `nuxt-security`'s auto-hints branch
+assigns to `nuxt.options.routeRules['/__nuxt_hints/**']` directly instead of
+merging, so any user-declared keys on that route rule (such as `csurf: false`,
+`robots: false`) are silently dropped.
 
-## What you should see
+## Steps to reproduce
 
-After `npm run dev` (or `nuxi prepare`), inspect the resolved Nitro route rules. The user's `csurf: false` and `robots: false` for `/__nuxt_hints/**` are gone; only `nuxt-security`'s auto-hints headers remain.
-
-Running the dev server and POSTing to `/__nuxt_hints/lazy-load` then returns:
-
+```bash
+npm install
+npm run dev
 ```
-403 Forbidden — CSRF Token Mismatch
-```
 
-even though the user explicitly disabled CSURF for that prefix.
+1. Open the printed local URL.
+2. Click **POST /__nuxt_hints/lazy-load** in the page.
+3. Observe in the page output and the Network panel:
 
-## Why it fails
+   ```
+   POST /__nuxt_hints/lazy-load → 403 CSRF Token Mismatch
+   ```
 
-`node_modules/nuxt-security/dist/module.mjs:20-28`:
+   even though `nuxt.config.ts` declared `csurf: false` for the same prefix.
+
+4. Optional: inspect the resolved Nitro config after `nuxi prepare`:
+
+   ```bash
+   grep -A6 '__nuxt_hints/\*\*' .nuxt/dev/index.mjs
+   ```
+
+   The user's `csurf: false` and `robots: false` keys are absent; only the
+   security middleware overrides set by `nuxt-security` remain.
+
+## Expected behaviour
+
+User-declared keys on `routeRules['/__nuxt_hints/**']` survive
+`nuxt-security`'s auto-configuration; the resolved rule is a deep merge.
+
+## Actual behaviour
+
+`nuxt-security` replaces the entire rule, so user-declared `csurf`, `robots`,
+and any other adjacent keys are dropped at module-setup time.
+
+## Root cause
+
+Introduced by [`d935250`](https://github.com/Baroshem/nuxt-security/commit/d935250)
+*("fix: support nuxt hints", 2026-05-09, shipped in v2.6.0)*, which switched
+from `defu(nuxt.options.routeRules, …)` (deep merge) to a direct assignment.
+Current `node_modules/nuxt-security/dist/module.mjs`:
 
 ```js
 if (hasNuxtModule('@nuxt/hints')) {
+  nuxt.options.routeRules = nuxt.options.routeRules || {}
   nuxt.options.routeRules['/__nuxt_hints/**'] = {
-    // …security headers…
+    security: {
+      rateLimiter: false,
+      requestSizeLimiter: false,
+      xssValidator: false,
+      corsHandler: false,
+    },
   }
 }
 ```
 
-The direct assignment replaces any keys the user already set on that route rule. `nuxt-security`'s own merge helper, `defuReplaceArray`, is not used here even though it is used elsewhere in the module.
+Restoring `defu(…)` (or the in-module `defuReplaceArray`) preserves any keys
+the consuming app already set.
 
-## Workaround
-
-Restore the user keys after every module's `setup` runs via a `nitro:config` hook:
+## User-side workaround
 
 ```ts
+// nuxt.config.ts
 hooks: {
   'nitro:config'(nitroConfig) {
     nitroConfig.routeRules ??= {}
@@ -45,12 +81,17 @@ hooks: {
 },
 ```
 
-## Ask
+## Related upstream activity
 
-Merge the auto-hints route rule with `defuReplaceArray` (or `defu`) instead of replacing it, so user-declared keys on `/__nuxt_hints/**` survive.
+No existing issue or PR addresses this regression at the time of writing.
+Earlier hints-compatibility work — [`#671`](https://github.com/Baroshem/nuxt-security/pull/671)
+and [`#674`](https://github.com/Baroshem/nuxt-security/pull/674) — used
+`defu(...)` and is what the regression replaced.
 
-## Versions
+## Environment
 
 - `nuxt@4.4.6`
 - `nuxt-security@2.6.0`
 - `@nuxt/hints@1.1.2`
+- `typescript@6.0.3`
+- Node.js ≥ 20.19
