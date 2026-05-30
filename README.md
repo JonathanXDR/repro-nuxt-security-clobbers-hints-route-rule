@@ -28,13 +28,13 @@ npm run dev
    grep -A6 '__nuxt_hints/\*\*' .nuxt/dev/index.mjs
    ```
 
-   The user's `csurf: false` and `robots: false` keys are absent; only the
+   The user's `csurf: false` and `robots: false` keys are absent. Only the
    security middleware overrides set by `nuxt-security` remain.
 
 ## Expected behaviour
 
 User-declared keys on `routeRules['/__nuxt_hints/**']` survive
-`nuxt-security`'s auto-configuration; the resolved rule is a deep merge.
+`nuxt-security`'s auto-configuration. The resolved rule is a deep merge.
 
 ## Actual behaviour
 
@@ -84,8 +84,8 @@ hooks: {
 ## Related upstream activity
 
 No existing issue or PR addresses this regression at the time of writing.
-Earlier hints-compatibility work — [`#671`](https://github.com/Baroshem/nuxt-security/pull/671)
-and [`#674`](https://github.com/Baroshem/nuxt-security/pull/674) — used
+Earlier hints-compatibility work via [`#671`](https://github.com/Baroshem/nuxt-security/pull/671)
+and [`#674`](https://github.com/Baroshem/nuxt-security/pull/674) used
 `defu(...)` and is what the regression replaced.
 
 ## Environment
