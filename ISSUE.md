@@ -38,10 +38,6 @@ requests are rejected.
 
 https://stackblitz.com/github/JonathanXDR/repro-nuxt-security-clobbers-hints-route-rule
 
-The StackBlitz start command runs `nuxi build` and prints the resolved
-`/__nuxt_hints/**` rule, ending with `BUG REPRODUCED` when the user keys are
-absent.
-
 ## Expected behavior
 
 User-declared keys on `routeRules['/__nuxt_hints/**']` survive the module's
