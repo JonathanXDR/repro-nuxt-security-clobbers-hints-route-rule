@@ -1,7 +1,7 @@
 export default defineNuxtConfig({
   compatibilityDate: '2026-03-21',
   // @nuxt/hints must be present so nuxt-security takes its auto-hints branch
-  // (node_modules/nuxt-security/dist/module.mjs:20-28).
+  // (node_modules/nuxt-security/dist/module.mjs:18-27).
   modules: ['@nuxt/hints', 'nuxt-security'],
 
   // The user opts the @nuxt/hints dev endpoint out of CSURF and robots.txt.

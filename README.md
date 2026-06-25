@@ -9,27 +9,32 @@ merging, so any user-declared keys on that route rule (such as `csurf: false`,
 
 ```bash
 npm install
-npm run dev
+npm run repro
 ```
 
-1. Open the printed local URL.
-2. Click **POST /__nuxt_hints/lazy-load** in the page.
-3. Observe in the page output and the Network panel:
+`npm run repro` builds the project and reads the resolved Nitro route rules
+back out of `.output/server/chunks/nitro/nitro.mjs`. It prints the resolved
+`/__nuxt_hints/**` rule, which is:
 
-   ```
-   POST /__nuxt_hints/lazy-load → 403 CSRF Token Mismatch
-   ```
+```json
+"/__nuxt_hints/**": {
+  "security": {
+    "rateLimiter": false,
+    "requestSizeLimiter": false,
+    "xssValidator": false,
+    "corsHandler": false
+  }
+}
+```
 
-   even though `nuxt.config.ts` declared `csurf: false` for the same prefix.
+The user-declared `csurf: false` and `robots: false` keys are absent. Only the
+security middleware overrides set by `nuxt-security` remain, and the script
+exits printing `BUG REPRODUCED`.
 
-4. Optional: inspect the resolved Nitro config after `nuxi prepare`:
-
-   ```bash
-   grep -A6 '__nuxt_hints/\*\*' .nuxt/dev/index.mjs
-   ```
-
-   The user's `csurf: false` and `robots: false` keys are absent. Only the
-   security middleware overrides set by `nuxt-security` remain.
+A runtime view of the same clobber is available via `npm run dev`: open the
+printed URL, click **POST /__nuxt_hints/lazy-load**, and the request returns
+`403 CSRF Token Mismatch` even though `nuxt.config.ts` declared `csurf: false`
+for that prefix.
 
 ## Expected behaviour
 
@@ -46,19 +51,19 @@ and any other adjacent keys are dropped at module-setup time.
 Introduced by [`d935250`](https://github.com/Baroshem/nuxt-security/commit/d935250)
 *("fix: support nuxt hints", 2026-05-09, shipped in v2.6.0)*, which switched
 from `defu(nuxt.options.routeRules, …)` (deep merge) to a direct assignment.
-Current `node_modules/nuxt-security/dist/module.mjs`:
+Current `node_modules/nuxt-security/dist/module.mjs:18-27`:
 
 ```js
-if (hasNuxtModule('@nuxt/hints')) {
-  nuxt.options.routeRules = nuxt.options.routeRules || {}
-  nuxt.options.routeRules['/__nuxt_hints/**'] = {
+if (hasNuxtModule("@nuxt/hints")) {
+  nuxt.options.routeRules = nuxt.options.routeRules || {};
+  nuxt.options.routeRules["/__nuxt_hints/**"] = {
     security: {
       rateLimiter: false,
       requestSizeLimiter: false,
       xssValidator: false,
-      corsHandler: false,
-    },
-  }
+      corsHandler: false
+    }
+  };
 }
 ```
 
